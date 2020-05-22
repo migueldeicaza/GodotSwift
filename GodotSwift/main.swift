@@ -249,7 +249,7 @@ class Class {
             args += ", \(at.ctype) \(a.name)"
         }
 
-        let sig = "\(rett.ctype) \(proxyName) (const MethodBind *method, const void *object\(args))"
+        let sig = "\(rett.ctype) \(proxyName) (MethodBind *method, Object *object\(args))"
         sigs += sig + ";\n"
         let ptrcall_ret_param = rett.apiName == "void" ? "NULL" : "&ret"
         var ptrcall_args: String
@@ -258,12 +258,15 @@ class Class {
         } else {
             ptrcall_args = "call_args"
         }
-        
+        var retTmp = "\(rett.crettmp) ret;"
+        if rett.apiName == "void" {
+            retTmp = ""
+        }
         r += """
 \(sig)
 {
-    \(rett.crettmp) ret;
-    method->ptrcall (object, \(ptrcall_args), \(ptrcall_ret_param))
+    \(retTmp)
+    method->ptrcall (object, \(ptrcall_args), \(ptrcall_ret_param));
     \(rett.ctoSwift)
 }
 
@@ -296,7 +299,7 @@ class Class {
         }
         
         r += """
-        \(lets)\(proxyName) (Self.\(bind), UnsafeRawPointer (self.handle))\(convert)
+        \(lets)\(proxyName) (Self.\(bind), self.handle!)\(convert)
 
 """
         return r
@@ -506,13 +509,20 @@ func registerCoreTypes ()
               ctoSwift: "return (int32_t) ret;",
               swiftWrap: nil)
 
-    Type.make(apiName: "bool", swiftName: "Bool")
+    Type.make(apiName: "bool",
+              swiftName: "Bool",
+              ctype: "_Bool",
+              crettmp: "_Bool",
+              cpass: "swift_string_to_godot (%1$@)",
+              ctoSwift: nil,
+              swiftWrap: nil,
+              swiftNullable: false)
     Type.make(apiName: "String",
               swiftName: "String",
               ctype: "const char *",
               crettmp: "String",
               cpass: "swift_string_to_godot (%1$@)",
-              ctoSwift: "swift_string_from_godot (%1$@)",
+              ctoSwift: "return swift_string_from_godot (ret);",
               swiftWrap: "%1$@ == nil ? nil : String (cString: %1$@!)",
               swiftNullable: true)
     Type.make(apiName: "NodePath", swiftName: "NodePath")
@@ -554,7 +564,7 @@ for c in classes.values {
 
 ccode = """
 /* THIS FILE IS GENERATED DO NOT EDIT */
-#include "glue-header.h"
+#include "glue_header.h"
 
 """
 
