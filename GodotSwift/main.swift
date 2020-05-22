@@ -318,7 +318,7 @@ class Class {
             let methodbindname = "method_bind_\(methodBindCount)"
             var ns = ""
             
-            if explore && ctr < maxCtr {
+            if true || (explore && ctr < maxCtr) {
                 let rett = Type.get (m.returnType)
                 ns = rett.swiftNullable ? "?" : ""
             } else {
@@ -484,7 +484,19 @@ func registerCoreTypes ()
     Type.make(apiName: "void", swiftName: "")
     Type.make(apiName: "float", swiftName: "Float")
     Type.make(apiName: "double", swiftName: "Double")
-
+    Type.make(apiName: "Plane", swiftName: "Plane")
+    Type.make(apiName: "Vector2", swiftName: "Vector2")
+    Type.make(apiName: "Rect2", swiftName: "Rect2")
+    Type.make(apiName: "Vector3", swiftName: "Vector3")
+    Type.make(apiName: "Basis", swiftName: "Basis")
+    Type.make(apiName: "Quat", swiftName: "Quat")
+    Type.make(apiName: "Transform", swiftName: "Transform")
+    Type.make(apiName: "Transform2D", swiftName: "Transform2D")
+    Type.make(apiName: "Color", swiftName: "Color")
+    Type.make(apiName: "RID", swiftName: "RID")
+    Type.make(apiName: "Array", swiftName: "GArray")
+    Type.make(apiName: "Dictionary", swiftName: "GDictionary")
+    Type.make(apiName: "AABB", swiftName: "AABB")
     Type.make(apiName: "int",
               swiftName: "Int32",
               swiftToC: nil,
@@ -503,6 +515,7 @@ func registerCoreTypes ()
               ctoSwift: "swift_string_from_godot (%1$@)",
               swiftWrap: "%1$@ == nil ? nil : String (cString: %1$@!)",
               swiftNullable: true)
+    Type.make(apiName: "NodePath", swiftName: "NodePath")
     Type.make(apiName: "PoolByteArray", swiftName: "[UInt8]")
     Type.make(apiName: "PoolIntArray", swiftName: "[UInt8]")
     Type.make(apiName: "PoolVector2Array", swiftName: "[Vector2]")
@@ -513,6 +526,8 @@ func registerCoreTypes ()
     Type.make (apiName: "enum.Vector3::Axis", swiftName: "Axis2D")
     Type.make (apiName: "enum.Vector2::Axis", swiftName: "Axis3D")
     Type.make (apiName: "enum.Variant::Type", swiftName: "Variant.GType")
+    Type.make (apiName: "enum.Variant::Operator", swiftName: "Variant.Operator")
+    Type.make (apiName: "Variant", swiftName: "Variant")
 }
 
 // POpulates the type registry with the types defined in api.json
