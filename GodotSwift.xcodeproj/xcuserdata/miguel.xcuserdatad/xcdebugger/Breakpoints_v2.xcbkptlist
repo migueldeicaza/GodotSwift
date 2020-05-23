@@ -14,8 +14,8 @@
             filePath = "GodotSwift/main.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "579"
-            endingLineNumber = "579"
+            startingLineNumber = "601"
+            endingLineNumber = "601"
             landmarkName = "unknown"
             landmarkType = "0">
          </BreakpointContent>
@@ -30,8 +30,8 @@
             filePath = "GodotSwift/main.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "414"
-            endingLineNumber = "414"
+            startingLineNumber = "418"
+            endingLineNumber = "418"
             landmarkName = "semanticEnums(_:_:)"
             landmarkType = "7">
          </BreakpointContent>
@@ -46,8 +46,8 @@
             filePath = "GodotSwift/main.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "361"
-            endingLineNumber = "361"
+            startingLineNumber = "365"
+            endingLineNumber = "365"
             landmarkName = "generateFunctions()"
             landmarkType = "7">
          </BreakpointContent>
@@ -62,8 +62,8 @@
             filePath = "GodotSwift/main.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "362"
-            endingLineNumber = "362"
+            startingLineNumber = "366"
+            endingLineNumber = "366"
             landmarkName = "generateFunctions()"
             landmarkType = "7">
          </BreakpointContent>
@@ -78,9 +78,25 @@
             filePath = "GodotSwift/main.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "293"
-            endingLineNumber = "293"
+            startingLineNumber = "297"
+            endingLineNumber = "297"
             landmarkName = "makeSwiftFunc(bind:proxyName:m:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "FCDBF228-4314-43FC-BECF-57879EEC6815"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "GodotSwift/main.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "170"
+            endingLineNumber = "170"
+            landmarkName = "make(apiName:swiftName:swiftToC:ctype:crettmp:cpass:ctoSwift:swiftWrap:swiftNullable:)"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

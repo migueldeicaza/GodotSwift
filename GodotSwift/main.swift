@@ -122,30 +122,31 @@ func determineEnumPrefix (e: Enum) -> Int
 }
 
 class Type {
-    // The name as found on api.json
+    /// The name as found on api.json
     var apiName: String
     
-    // The name as it is going to be surfaced in the Swift API
+    /// The name as it is going to be surfaced in the Swift API
     var swiftName: String?
     
-    // The code to marshal the parameter encoded as %1$@ to the C proxy
+    /// The code to marshal the parameter encoded as %1$@ to the C proxy
     var swiftToC: String
     
-    // The C type that will be declared
+    /// The C type that will be declared
     var ctype: String
     
-    // The type that is used to declare the return value
+    /// The type that is used to declare the return value
     var crettmp: String
     
-    // The code to marshal the parameter into the expected code from Godot ptrcall
+    /// The code to marshal the parameter into the expected code from Godot ptrcall, defaults to the name of the parameter
     var cpass: String
     
-    // The code to return the C value to Swift, should reference "ret" as the return value, output is passed to return
+    /// The code to return the C value to Swift, should reference "ret" as the return value, output is passed to return, defauls to 'return ret;'
     var ctoSwift: String
     
-    // The code in Swift to wrap the C return to Swift, should use %1$@ as the return value
+    /// The code in Swift to wrap the C return to Swift, defaults to "return tmp"
     var swiftWrap: String
     
+    /// Whether this type can be nullable on return
     var swiftNullable: Bool
     
     public init (apiName: String, swiftName: String?, swiftToC: String? = nil, ctype: String? = nil, crettmp: String? = nil, cpass: String? = nil, ctoSwift: String? = nil, swiftWrap: String? = nil, swiftNullable: Bool = false)
@@ -157,7 +158,7 @@ class Type {
         self.cpass = cpass ?? "%1$@"
         self.crettmp = crettmp ?? "void" // This should break the C compilation if not provided
         self.ctoSwift = ctoSwift ?? "return ret;"
-        self.swiftWrap = swiftWrap ?? "%1$@"
+        self.swiftWrap = swiftWrap ?? "return tmp"
         self.swiftNullable = swiftNullable
     }
     
@@ -165,6 +166,9 @@ class Type {
     
     static func make (apiName: String, swiftName: String, swiftToC: String? = nil, ctype: String? = nil, crettmp: String? = nil, cpass: String? = nil, ctoSwift: String? = nil, swiftWrap: String? = nil, swiftNullable: Bool = false)
     {
+        if apiName.contains ("enum"){
+            //print ("here")
+        }
         all [apiName] = Type (apiName: apiName, swiftName: swiftName, swiftToC: swiftToC, ctype: ctype, crettmp: crettmp, cpass: cpass, ctoSwift: ctoSwift, swiftWrap: swiftWrap, swiftNullable: swiftNullable)
     }
     
@@ -189,7 +193,7 @@ func mapType (_ str: String)-> String
 var sigs: String = ""
 var ccode: String = ""
 var ctr = 0
-var maxCtr = 3
+var maxCtr = 4
 class Class {
     var j: GodotApiElement
     var name: String
@@ -292,7 +296,7 @@ class Class {
         let convert: String
         if rett.apiName != "void" {
             lets = "let tmp = "
-            convert = "\n        return " + String (format: rett.swiftWrap, "tmp")
+            convert = "\n        \(rett.swiftWrap)"
         } else {
             lets = ""
             convert = ""
@@ -426,7 +430,16 @@ class Class {
                 newValues [escapeSwift (snakeToCamel(constant_name))] = e.values [v]
             }
             //print ("Registering handler for " + "enum.\(container)::\(e.name)")
-            Type.make(apiName: "enum.\(container)::\(e.name)", swiftName: "\(container).\(snakeToPascal (typeRemap (e.name)))")
+            let enumName = "\(container).\(snakeToPascal (typeRemap (e.name)))"
+            Type.make(apiName: "enum.\(container)::\(e.name)",
+                      swiftName: enumName,
+                      swiftToC: "%1$@.rawValue",
+                      ctype: "uint32_t",
+                      crettmp: "uint64_t",
+                      //cpass: <#T##String?#>,
+                      //ctoSwift: <#T##String?#>,
+                      swiftWrap: "return \(enumName).init (rawValue: tmp)",
+                      swiftNullable: false)
             enums [i].values = newValues
         }
     }
@@ -523,7 +536,7 @@ func registerCoreTypes ()
               crettmp: "String",
               cpass: "swift_string_to_godot (%1$@)",
               ctoSwift: "return ret.utf8().get_data();",
-              swiftWrap: "%1$@ == nil ? nil : String (cString: %1$@!)",
+              swiftWrap: "return tmp == nil ? nil : String (cString: tmp!)",
               swiftNullable: true)
     Type.make(apiName: "NodePath", swiftName: "NodePath")
     Type.make(apiName: "PoolByteArray", swiftName: "[UInt8]")
@@ -544,7 +557,16 @@ func registerCoreTypes ()
 func registerBindingTypes ()
 {
     for (name, ctype) in classes {
-        Type.make(apiName: name, swiftName: ctype.name, swiftToC: "OpaquePointer (%1$@.handle)", ctype: "const void *", crettmp: "void *", cpass: "%1$@", ctoSwift: "%1$@", swiftWrap: "Object.lookupInstance<T> (%1$@")
+        Type.make(
+            apiName: name,
+            swiftName: ctype.name,
+            swiftToC: "OpaquePointer (%1$@.handle)",
+            ctype: "const void *",
+            crettmp: "void *",
+            cpass: "%1$@",
+            ctoSwift: "return ret;",
+            swiftWrap: "if tmp == nil { return nil }; let wrapped: \(ctype.name) = Object.lookupInstance (ptr: OpaquePointer (tmp!)); return wrapped",
+            swiftNullable: true)
     }
 }
 
