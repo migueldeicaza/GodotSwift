@@ -522,7 +522,7 @@ func registerCoreTypes ()
               ctype: "const char *",
               crettmp: "String",
               cpass: "swift_string_to_godot (%1$@)",
-              ctoSwift: "return swift_string_from_godot (ret);",
+              ctoSwift: "return ret.utf8().get_data();",
               swiftWrap: "%1$@ == nil ? nil : String (cString: %1$@!)",
               swiftNullable: true)
     Type.make(apiName: "NodePath", swiftName: "NodePath")
