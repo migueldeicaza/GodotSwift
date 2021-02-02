@@ -28,25 +28,160 @@ import Godot
         }
         print ("type: \(x.name)")
         
-        res += "public struct \(x.name) {\n"
+        res += "public class \(x.name) {\n"
         let gdname = builtinTypeToGdName (typeName)
-        res += indent ("var _\(gdname): \(gdname) = \(gdname)()")
-        for m in x.methods {
-            let ret = getGodotType(m.returnType)
-            let retSig = ret == "" ? "" : "-> \(ret)"
-            var args = ""
-            
-            for arg in m.arguments {
-                if args != "" { args += ", " }
-                args += getArgumentDeclaration(arg)
-            }
-            var mr = "func \(escapeSwift (snakeToCamel(m.name))) (\(args))\(retSig) {\n"
-            mr += "   abort ()\n"
-            mr += "}\n"
-            res += indent (mr)
+        let typeEnum = builtinTypeToGdNativeEnum (typeName)
+        res += indent ("var _\(gdname): \(gdname) = \(gdname)()\n")
+        
+        res += indent ("init (_ native: \(gdname)) {\n")
+        res += indent ("    _\(gdname) = native\n")
+        res += indent ("}\n\n")
+        
+        // For String and StringName, make constructors that take Swift Strings
+        if typeName == "String" {
+            res += indent ("public init (_ str: Swift.String){\n")
+            res += indent ("    \(gdname)_new_with_utf8_chars (&_\(gdname), str);\n")
+            res += indent ("}\n")
         }
+        res += indent (generateBuiltinCtors (x.constructors, gdname, typeName, typeEnum))
+        res += indent (generateBuiltinMethods (x.methods, gdname, typeName, typeEnum))
+        res += indent (generateBuiltinMembers (x.members, gdname, typeName, typeEnum))
         res += "}\n\n"
     }
     
     try! res.write(toFile: "/Users/miguel/cvs/GodotSwiftLink/Sources/GodotSwift/GodotSwift.gen.swift", atomically: true, encoding: .utf8)
+}
+
+func generateArgPrepare (_ args: [BArgument]) -> (prep: String, warnDelete: String) {
+    var body = ""
+    var warnDelete = ""
+    if args.count > 0 {
+        for arg in args {
+            if !isCoreType (name: arg.type) {
+                body += "var copy_\(arg.name) = \(escapeSwift (snakeToCamel (arg.name)))\n"
+            }
+        }
+
+        body += "var args: [UnsafeRawPointer?] = [\n"
+        
+        for arg in args {
+            let argref = isCoreType(name: arg.type) ? escapeSwift (snakeToCamel (arg.name)) : "copy_\(arg.name)"
+            body += "    UnsafeRawPointer(&\(argref)),\n"
+            //body += "    &\(argref),\n"
+            //twiwarnDelete += "    _ = \(argref)\n"
+        }
+        body += "]\n"
+        
+    }
+    return (body, warnDelete)
+}
+
+func generateBuiltinMethods (_ methods: [BConstructor], _ gdname: String, _ typeName: String, _ typeEnum: String) -> String
+{
+    var generated = ""
+    for m in methods {
+        var mr: String
+        let ret = getGodotType(m.returnType)
+        
+        // TODO: problem caused by gobject_object being defined as "void", so it is not possible to create storage to that.
+        if ret == "Object" {
+            continue
+        }
+        let retSig = ret == "" ? "" : "-> \(ret)"
+        var args = ""
+    
+        let ptrName = "method_\(m.name)"
+        mr = "static var \(ptrName): godot_ptr_builtin_method = godot_variant_get_ptr_builtin_method_with_cstring (\(typeEnum), \"\(m.name)\")\n"
+        for arg in m.arguments {
+            if args != "" { args += ", " }
+            args += getArgumentDeclaration(arg)
+        }
+        
+        let has_return = m.returnType != "void"
+        
+        mr += "public func \(escapeSwift (snakeToCamel(m.name))) (\(args))\(retSig) {\n"
+        var body = ""
+        var resultTypeName = builtinTypeToGdName(m.returnType)
+        body += (has_return ? "var result: \(resultTypeName) = \(resultTypeName)()" : "") + "\n"
+        
+        let (argPrep, warnDelete) = generateArgPrepare(m.arguments)
+        body += argPrep
+        let ptrArgs = m.arguments.count > 0 ? "&args" : "nil"
+        let ptrResult = has_return ? "&result" : "nil"
+        
+        body += "\(typeName).\(ptrName) (&_\(gdname), \(ptrArgs), \(ptrResult), \(m.arguments.count))"
+        body += "\n"
+        if has_return {
+            let cast = castGodotToSwift (m.returnType, "result")
+            body += "return \(cast)"
+        }
+        mr += indent (body)
+        mr += warnDelete
+        mr += "}\n"
+        generated += mr
+    }
+    return generated
+}
+
+
+func generateBuiltinMembers (_ members: [BMember], _ gdname: String, _ typeName: String, _ typeEnum: String) -> String
+{
+    var generated = ""
+    for m in members {
+        var mr = ""
+        let name = m.name
+        let memberType = getGodotType (m.type.rawValue)
+        var resultTypeName = builtinTypeToGdName(m.type.rawValue)
+        mr += "static var get_\(name): godot_ptr_getter = godot_variant_get_ptr_getter_with_cstring (\(typeEnum), \"\(m.name)\")\n"
+        mr += "static var set_\(name): godot_ptr_setter = godot_variant_get_ptr_setter_with_cstring (\(typeEnum), \"\(m.name)\")\n"
+        mr += "public var \(name): \(memberType) {\n"
+        mr += "    get {\n"
+        mr += "        var result: \(resultTypeName) = \(resultTypeName)()\n"
+        mr += "        \(typeName).get_\(name) (&_\(gdname), &result)\n"
+        let cast = castGodotToSwift(m.type.rawValue, "result")
+        mr += "        return \(cast)\n"
+        mr += "    }\n"
+        mr += "    set {\n"
+        mr += "        abort()\n"
+        mr += "    }\n"
+        mr += "}\n"
+
+        generated += mr
+    }
+    return generated
+}
+
+func generateBuiltinCtors (_ methods: [BConstructor], _ gdname: String, _ typeName: String, _ typeEnum: String) -> String
+{
+    var generated = ""
+    var ctorCount = 0
+    for m in methods {
+        var mr: String
+        
+        var args = ""
+    
+        let ptrName = "constructor\(ctorCount)"
+        mr = "static var \(ptrName): godot_ptr_constructor = godot_variant_get_ptr_constructor (\(typeEnum), \(ctorCount))\n"
+        ctorCount += 1
+        for arg in m.arguments {
+            if args != "" { args += ", " }
+            args += getArgumentDeclaration(arg)
+        }
+        
+        mr += "public init (\(args)) {\n"
+        var body = ""
+        
+        let (argPrep, warnDelete) = generateArgPrepare(m.arguments)
+        body += argPrep
+
+        let ptrArgs = m.arguments.count > 0 ? "&args" : "nil"
+        
+        body += "\(typeName).\(ptrName) (&_\(gdname), \(ptrArgs))"
+        body += "\n"
+        mr += indent (body)
+        mr += warnDelete
+        mr += "}\n"
+        generated += mr
+    }
+    return generated
 }

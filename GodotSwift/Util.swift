@@ -76,7 +76,7 @@ func isPrimitiveType (name: String) -> Bool {
 
 func escapeSwift (_ id: String) -> String {
     switch id {
-    case "protocol", "in", "self", "case", "repeat", "static", "default", "import", "init", "continue", "repeat":
+    case "protocol", "func", "inout", "in", "self", "case", "repeat", "static", "default", "import", "init", "continue":
         return "`\(id)`"
     default:
         return id
@@ -124,10 +124,32 @@ func getGodotType (_ t: String) -> String {
     }
 }
 
+func builtinTypeToGdNativeEnum (_ t: String) -> String {
+    "GODOT_VARIANT_TYPE_" + (camelToSnake(t).uppercased())
+}
+
 func getArgumentDeclaration (_ argument: BArgument) -> String {
-    return "\(escapeSwift (snakeToCamel (argument.name))): \(getGodotType(argument.type))"
+    let optNeedInOut = isCoreType(name: argument.type) ? "inout " : ""
+    return "\(escapeSwift (snakeToCamel (argument.name))): \(optNeedInOut)\(getGodotType(argument.type))"
 }
 
 func builtinTypeToGdName (_ name: String) -> String {
     return "godot_" + camelToSnake (name)
+}
+
+func castGodotToSwift (_ type: String, _ arg: String) -> String {
+    
+    switch (type){
+    case "int":
+        return "Int (\(arg))"
+    case "bool":
+        return "\(arg) == 0 ? false : true"
+    default:
+        if isCoreType(name: type){
+            return "\(type) (\(arg))"
+        }
+        print ("cast \(type)")
+        return arg
+    }
+    return ""
 }
