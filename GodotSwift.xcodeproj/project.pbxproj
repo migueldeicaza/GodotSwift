@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		498D948525C8BFB8006244B8 /* BuiltinJsonApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 498D948425C8BFB8006244B8 /* BuiltinJsonApi.swift */; };
+		498D948825C8C186006244B8 /* genBuiltins.swift in Sources */ = {isa = PBXBuildFile; fileRef = 498D948725C8C186006244B8 /* genBuiltins.swift */; };
+		498D948B25C8C215006244B8 /* Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = 498D948A25C8C215006244B8 /* Util.swift */; };
 		49E5961D247626F500B4B86B /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E5961C247626F500B4B86B /* main.swift */; };
 		49E596242476276200B4B86B /* JsonApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E596232476276200B4B86B /* JsonApi.swift */; };
 /* End PBXBuildFile section */
@@ -24,6 +27,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		498D948425C8BFB8006244B8 /* BuiltinJsonApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuiltinJsonApi.swift; sourceTree = "<group>"; };
+		498D948725C8C186006244B8 /* genBuiltins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = genBuiltins.swift; sourceTree = "<group>"; };
+		498D948A25C8C215006244B8 /* Util.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Util.swift; sourceTree = "<group>"; };
 		49E59619247626F500B4B86B /* GodotSwift */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = GodotSwift; sourceTree = BUILT_PRODUCTS_DIR; };
 		49E5961C247626F500B4B86B /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		49E596232476276200B4B86B /* JsonApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JsonApi.swift; sourceTree = "<group>"; };
@@ -60,7 +66,10 @@
 			isa = PBXGroup;
 			children = (
 				49E5961C247626F500B4B86B /* main.swift */,
+				498D948A25C8C215006244B8 /* Util.swift */,
 				49E596232476276200B4B86B /* JsonApi.swift */,
+				498D948425C8BFB8006244B8 /* BuiltinJsonApi.swift */,
+				498D948725C8C186006244B8 /* genBuiltins.swift */,
 			);
 			path = GodotSwift;
 			sourceTree = "<group>";
@@ -123,6 +132,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				498D948825C8C186006244B8 /* genBuiltins.swift in Sources */,
+				498D948525C8BFB8006244B8 /* BuiltinJsonApi.swift in Sources */,
+				498D948B25C8C215006244B8 /* Util.swift in Sources */,
 				49E596242476276200B4B86B /* JsonApi.swift in Sources */,
 				49E5961D247626F500B4B86B /* main.swift in Sources */,
 			);

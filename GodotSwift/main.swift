@@ -18,13 +18,17 @@ import Foundation
 
 typealias GodotApiElement = WelcomeElement
 typealias GodotApi = Welcome
+typealias GodotBuiltinApiElement = BWelcomeElement
+typealias GodotBuiltinApi = BWelcome
 
-let projectDir = "/Users/miguel/cvs/godot"
+let projectDir = "/Users/miguel/cvs/godot-master/godot"
 let swiftGodot = projectDir + "/modules/swift"
 let swiftOutput = swiftGodot + "/glue/GodotSwift/Sources/GodotSwift/Generated"
 let swiftCout = swiftGodot + "/glue"
 let jsonData = try! Data(contentsOf: URL(fileURLWithPath: projectDir + "/api.json"))
+let jsonBuiltinData = try! Data(contentsOf: URL(fileURLWithPath: projectDir + "/builtin-api.json"))
 let jsonApi = try! JSONDecoder().decode(GodotApi.self, from: jsonData)
+let jsonBuiltinApi = try! JSONDecoder().decode(GodotBuiltinApi.self, from: jsonBuiltinData)
 var methodBindCount = 0
 
 func snakeToPascal (_ s: String) -> String {
@@ -47,20 +51,6 @@ extension String {
         }
         return self.lowercased()
     }
-}
-
-func escapeSwift (_ id: String) -> String {
-    switch id {
-    case "protocol", "in", "self", "case", "repeat", "static", "default", "import", "init", "continue":
-        return "`\(id)`"
-    default:
-        return id
-    }
-}
-func snakeToCamel (_ s: String) -> String {
-    let parts = s.split (separator: "_")
-    let r = parts [0].lowercased() + parts.dropFirst().map { x in x.prefix (1).capitalized + String (x.dropFirst()).cleverLowercase() }.joined()
-    return r
 }
 
 func typeRemap (_ t: String) -> String
@@ -467,8 +457,8 @@ public \(classOrExtension) \(name) \(baseClassDecl) {
 """
 
         if !isExtension() {
-            if j.instanciable {
-                let overrideStr = (baseClass?.j.instanciable ?? false) ? "override " : ""
+            if j.instantiable {
+                let overrideStr = (baseClass?.j.instantiable ?? false) ? "override " : ""
             r += """
     public \(overrideStr)init () {
         super.init (owns: true, handle: nil)
@@ -502,8 +492,10 @@ func registerCoreTypes ()
     Type.make(apiName: "double", swiftName: "Double")
     Type.make(apiName: "Plane", swiftName: "Plane")
     Type.make(apiName: "Vector2", swiftName: "Vector2")
+    Type.make(apiName: "Vector2i", swiftName: "Vector2i")
     Type.make(apiName: "Rect2", swiftName: "Rect2")
     Type.make(apiName: "Vector3", swiftName: "Vector3")
+    Type.make(apiName: "Vector3i", swiftName: "Vector3i")
     Type.make(apiName: "Basis", swiftName: "Basis")
     Type.make(apiName: "Quat", swiftName: "Quat")
     Type.make(apiName: "Transform", swiftName: "Transform")
@@ -551,6 +543,18 @@ func registerCoreTypes ()
     Type.make (apiName: "enum.Variant::Type", swiftName: "Variant.GType")
     Type.make (apiName: "enum.Variant::Operator", swiftName: "Variant.Operator")
     Type.make (apiName: "Variant", swiftName: "Variant")
+    Type.make (apiName: "PackedByteArray", swiftName: "PackedByteArray")
+    Type.make (apiName: "PackedInt32Array", swiftName: "PackedInt32Array")
+    Type.make (apiName: "PackedInt64Array", swiftName: "PackedInt64Array")
+    Type.make (apiName: "PackedVector3Array", swiftName: "PackedVector3Array")
+    Type.make (apiName: "PackedVector2Array", swiftName: "PackedVector2Array")
+    Type.make (apiName: "StringName", swiftName: "StringName")
+    Type.make (apiName: "PackedStringArray", swiftName: "PackedStringArray")
+    Type.make (apiName: "PackedColorArray", swiftName: "PackedColorArray")
+    Type.make (apiName: "PackedFloat32Array", swiftName: "PackedFloat32Array")
+    Type.make (apiName: "PackedFloat64Array", swiftName: "PackedFloat64Array")
+    Type.make (apiName: "Callable", swiftName: "Callable")
+    Type.make (apiName: "Rect2i", swiftName: "Rect2i")
 }
 
 // POpulates the type registry with the types defined in api.json
@@ -570,38 +574,41 @@ func registerBindingTypes ()
     }
 }
 
-for x in jsonApi {
-    let c = Class (j: x)
-    classes [x.name] = c
-}
-registerCoreTypes()
-registerBindingTypes ()
-
-// Temp:
-Type.make (apiName: "enum.Error", swiftName: "Error")
-
-for c in classes.values {
-    c.semantic ()
-}
-
-ccode = """
+func highlevelBind () {
+    for x in jsonApi {
+        let c = Class (j: x)
+        classes [x.name] = c
+    }
+    registerCoreTypes()
+    registerBindingTypes ()
+    
+    // Temp:
+    Type.make (apiName: "enum.Error", swiftName: "Error")
+    
+    for c in classes.values {
+        c.semantic ()
+    }
+    
+    ccode = """
 /* THIS FILE IS GENERATED DO NOT EDIT */
 #include "glue_header.h"
 
 """
-
-var count = 0
-for c in classes.values.sorted(by: { $0.name < $1.name }) {
-    count += 1
-    if c.name == "GlobalConstants" {
-        continue
+    
+    var count = 0
+    for c in classes.values.sorted(by: { $0.name < $1.name }) {
+        count += 1
+        if c.name == "GlobalConstants" {
+            continue
+        }
+        let res = c.generateFullClass()
+        let outfile = swiftOutput + "/\(c.filename)"
+        try! res.write(toFile: outfile, atomically: true, encoding: .utf8)
     }
-    let res = c.generateFullClass()
-    let outfile = swiftOutput + "/\(c.filename)"
-    try! res.write(toFile: outfile, atomically: true, encoding: .utf8)
+    
+    try! ccode.write(toFile: "\(swiftCout)/swift_glue.gen.cpp", atomically: true, encoding: .utf8)
+    try! sigs.write(toFile: "\(swiftCout)/swift_glue.gen.inc", atomically: true, encoding: .utf8)
+    print ("Generated \(count) classes")
 }
 
-try! ccode.write(toFile: "\(swiftCout)/swift_glue.gen.cpp", atomically: true, encoding: .utf8)
-try! sigs.write(toFile: "\(swiftCout)/swift_glue.gen.inc", atomically: true, encoding: .utf8)
-print ("Generated \(count) classes")
-
+builtinBind (start: jsonBuiltinApi)

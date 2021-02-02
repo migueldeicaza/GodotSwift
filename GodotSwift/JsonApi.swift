@@ -11,7 +11,7 @@ struct WelcomeElement: Codable {
     var apiType: APIType
     var singleton: Bool
     var singletonName: String
-    var instanciable, isReference: Bool
+    var instantiable, isReference: Bool
     var constants: [String: Int]
     var properties: [Property]
     var signals: [Signal]
@@ -24,7 +24,7 @@ struct WelcomeElement: Codable {
         case apiType = "api_type"
         case singleton
         case singletonName = "singleton_name"
-        case instanciable
+        case instantiable
         case isReference = "is_reference"
         case constants, properties, signals, methods, enums
     }
@@ -65,7 +65,7 @@ struct Method: Codable {
 // MARK: - Argument
 struct Argument: Codable {
     var name, type: String
-    var hasDefaultValue: Bool?
+    var hasDefaultValue: Bool
     var defaultValue: String
 
     enum CodingKeys: String, CodingKey {
