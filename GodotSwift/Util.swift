@@ -153,3 +153,33 @@ func castGodotToSwift (_ type: String, _ arg: String) -> String {
     }
     return ""
 }
+
+func getOperatorName (code: Int) -> String {
+    let operator_map = [
+        "==",
+        "!=",
+        "<",
+        "<=",
+        ">",
+        ">=",
+        "+",
+        "-",
+        "*",
+        "/",
+        "-",
+        "+",
+        "%",
+        "<<",
+        ">>",
+        "&",
+        "|",
+        "^",
+        "~",
+        "&&",
+        "||",
+        "xor", // There's no "xor" in C++ but also not used in Godot anyway.
+        "!",
+        "in", // Here for consistency, but this case is treated apart in generation.
+    ]
+    return operator_map [code]
+}
