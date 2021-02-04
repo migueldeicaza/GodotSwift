@@ -8,6 +8,13 @@
 
 import Foundation
 
+protocol PArgument {
+    var type: String { get set }
+    var name: String { get set }
+}
+extension BArgument: PArgument {}
+extension Argument: PArgument {}
+
 extension String {
     func camelCaseToSnakeCase() -> String {
         let acronymPattern = "([A-Z]+)([A-Z][a-z]|[0-9])"
@@ -108,6 +115,9 @@ func indent (_ str: String) -> String {
 }
 
 func getGodotType (_ t: String) -> String {
+    if isEnum (name: t) {
+        return t.dropFirst(5) + " "
+    }
     switch t {
     case "int":
         return "Int"
@@ -128,8 +138,9 @@ func builtinTypeToGdNativeEnum (_ t: String) -> String {
     "GODOT_VARIANT_TYPE_" + (camelToSnake(t).uppercased())
 }
 
-func getArgumentDeclaration (_ argument: BArgument) -> String {
-    let optNeedInOut = isCoreType(name: argument.type) ? "inout " : ""
+func getArgumentDeclaration (_ argument: PArgument) -> String {
+    //let optNeedInOut = isCoreType(name: argument.type) ? "inout " : ""
+    let optNeedInOut = ""
     return "\(escapeSwift (snakeToCamel (argument.name))): \(optNeedInOut)\(getGodotType(argument.type))"
 }
 
@@ -148,7 +159,7 @@ func castGodotToSwift (_ type: String, _ arg: String) -> String {
         if isCoreType(name: type){
             return "\(type) (\(arg))"
         }
-        print ("cast \(type)")
+        //print ("cast \(type)")
         return arg
     }
     return ""
@@ -182,4 +193,49 @@ func getOperatorName (code: Int) -> String {
         "in", // Here for consistency, but this case is treated apart in generation.
     ]
     return operator_map [code]
+}
+
+func generateArgPrepare (_ args: [PArgument]) -> (prep: String, warnDelete: String) {
+    var body = ""
+    var warnDelete = ""
+    
+    if args.count > 0 {
+        for arg in args {
+            if !isCoreType (name: arg.type) {
+                body += "var copy_\(arg.name) = \(escapeSwift (snakeToCamel (arg.name)))\n"
+            }
+        }
+
+        body += "var args: [UnsafeRawPointer?] = [\n"
+        
+        for arg in args {
+            var argref: String
+            var optstorage: String
+            if isCoreType(name: arg.type){
+                argref = escapeSwift (snakeToCamel (arg.name))
+                optstorage = "._" + builtinTypeToGdName(arg.type)
+            } else {
+                argref = "copy_\(arg.name)"
+                optstorage = ""
+            }
+            if isPrimitiveType(name: arg.type) || isCoreType(name: arg.type) {
+                body += "    UnsafeRawPointer(&\(argref)\(optstorage)),\n"
+            } else {
+                body += "    UnsafeRawPointer(&\(argref).handle),\n"
+            }
+            //body += "    &\(argref),\n"
+            //twiwarnDelete += "    _ = \(argref)\n"
+        }
+        body += "]\n"
+        
+    }
+    return (body, warnDelete)
+}
+
+func stripName (_ str: String) -> String {
+    if str.starts(with: "_") {
+        return String (str.dropFirst())
+    } else {
+        return str
+    }
 }

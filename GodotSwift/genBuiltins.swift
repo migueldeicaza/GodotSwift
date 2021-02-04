@@ -24,9 +24,10 @@ func builtinBind (start: GodotBuiltinApi)
             continue
         }
         if !isCoreType(name: typeName) {
+            print ("BuiltinType: Skipping type \(typeName)")
             continue
         }
-        print ("type: \(x.name)")
+        // print ("type: \(x.name)")
         
         res += "public class \(x.name) {\n"
         let gdname = builtinTypeToGdName (typeName)
@@ -43,56 +44,24 @@ func builtinBind (start: GodotBuiltinApi)
             res += indent ("    \(gdname)_new_with_utf8_chars (&_\(gdname), str);\n")
             res += indent ("}\n")
         }
-        res += indent (generateConstants (x.constants, gdname, typeName, typeEnum))
+        res += indent (generateBuiltinConstants (x.constants, gdname, typeName, typeEnum))
         res += indent (generateBuiltinCtors (x.constructors, gdname, typeName, typeEnum))
         res += indent (generateBuiltinMethods (x.methods, gdname, typeName, typeEnum))
         res += indent (generateBuiltinMembers (x.members, gdname, typeName, typeEnum))
         res += indent (generateBuiltinOperators (x.operators, gdname, typeName, typeEnum))
         res += "}\n\n"
         
-        try! res.write(toFile: "/Users/miguel/cvs/GodotSwiftLink/Sources/GodotSwift/\(typeName).gen.swift", atomically: true, encoding: .utf8)
+        try! res.write(toFile: "/Users/miguel/cvs/GodotSwiftLink/Sources/GodotSwift/generated/\(typeName).gen.swift", atomically: true, encoding: .utf8)
     }
 }
 
-func generateArgPrepare (_ args: [BArgument]) -> (prep: String, warnDelete: String) {
-    var body = ""
-    var warnDelete = ""
-    if args.count > 0 {
-        for arg in args {
-            if !isCoreType (name: arg.type) {
-                body += "var copy_\(arg.name) = \(escapeSwift (snakeToCamel (arg.name)))\n"
-            }
-        }
 
-        body += "var args: [UnsafeRawPointer?] = [\n"
-        
-        for arg in args {
-            var argref: String
-            var optstorage: String
-            if isCoreType(name: arg.type){
-                argref = escapeSwift (snakeToCamel (arg.name))
-                optstorage = "._" + builtinTypeToGdName(arg.type)
-            } else {
-                argref = "copy_\(arg.name)"
-                optstorage = ""
-            }
-            
-            body += "    UnsafeRawPointer(&\(argref)\(optstorage)),\n"
-            //body += "    &\(argref),\n"
-            //twiwarnDelete += "    _ = \(argref)\n"
-        }
-        body += "]\n"
-        
-    }
-    return (body, warnDelete)
-}
-
-func generateConstants (_ constants: [BConstant], _ gdname: String, _ typeName: String, _ typeEnum: String) -> String
+func generateBuiltinConstants (_ constants: [BConstant], _ gdname: String, _ typeName: String, _ typeEnum: String) -> String
 {
     var generated = ""
 
     if constants.count > 0 {
-        generated += "\n/* Constants */"
+        generated += "\n/* Constants */\n"
     }
     for c in constants {
         var mr = ""
@@ -113,7 +82,7 @@ func generateBuiltinMethods (_ methods: [BConstructor], _ gdname: String, _ type
 {
     var generated = ""
     if methods.count > 0 {
-        generated += "\n/* Methods */"
+        generated += "\n/* Methods */\n"
     }
     for m in methods {
         var mr: String
@@ -198,7 +167,7 @@ func generateBuiltinMembers (_ members: [BMember], _ gdname: String, _ typeName:
 {
     var generated = ""
     if members.count > 0 {
-        generated += "\n/* Properties */"
+        generated += "\n/* Properties */\n"
     }
 
     for m in members {

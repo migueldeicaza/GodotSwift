@@ -612,3 +612,4 @@ func highlevelBind () {
 }
 
 builtinBind (start: jsonBuiltinApi)
+genBind(start: jsonApi)
