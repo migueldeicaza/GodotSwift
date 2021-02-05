@@ -208,7 +208,7 @@ class Class {
     }
     
     var strpublic: String { isExtension() ? "" : "public" }
-    func generateEnums () -> String
+    func oldgenerateenums () -> String
     {
         var r = ""
         
@@ -475,7 +475,7 @@ public \(classOrExtension) \(name) \(baseClassDecl) {
 
 """
         }
-        r += generateEnums ()
+        r += oldgenerateenums ()
         let (swiftcode,cfun) = generateFunctions()
         r += swiftcode
         r += "}\n"

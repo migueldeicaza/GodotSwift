@@ -83,7 +83,8 @@ func isPrimitiveType (name: String) -> Bool {
 
 func escapeSwift (_ id: String) -> String {
     switch id {
-    case "protocol", "func", "inout", "in", "self", "case", "repeat", "static", "default", "import", "init", "continue":
+    case "protocol", "func", "static", "inout", "in", "self", "case", "repeat", "default",
+         "import", "init", "continue", "class", "operator", "where":
         return "`\(id)`"
     default:
         return id
@@ -93,6 +94,9 @@ func escapeSwift (_ id: String) -> String {
 func snakeToCamel (_ s: String) -> String {
     let parts = s.split (separator: "_")
     let r = parts [0].lowercased() + parts.dropFirst().map { x in x.prefix (1).capitalized + String (x.dropFirst()).cleverLowercase() }.joined()
+    if s.first == "_" {
+        return "_" + r
+    }
     return r
 }
 
@@ -114,9 +118,24 @@ func indent (_ str: String) -> String {
     return res
 }
 
+func mapEnum (_ name: String) -> String{
+    if name == "Type" {
+        return "Kind"
+    }
+    if name.hasSuffix(".Type") {
+        return name.dropLast(4) + "Kind"
+    }
+    return name 
+}
 func getGodotType (_ t: String) -> String {
     if isEnum (name: t) {
-        return t.dropFirst(5) + " "
+        var et = t.dropFirst(5).replacingOccurrences(of: "::", with: ".")
+        et = mapEnum (et)
+        et += " " 
+        if et.starts(with: "_") {
+            return String (et.dropFirst())
+        }
+        return et
     }
     switch t {
     case "int":
@@ -150,11 +169,21 @@ func builtinTypeToGdName (_ name: String) -> String {
 
 func castGodotToSwift (_ type: String, _ arg: String) -> String {
     
+    if isEnum(name: type){
+        var t = type.dropFirst(5).replacingOccurrences(of: "::", with: ".")
+        t = mapEnum (t)
+        if t.starts(with: ("_")) {
+            t = String (t.dropFirst())
+        }
+        return "\(t) (rawValue: \(arg))!"
+    }
     switch (type){
     case "int":
         return "Int (\(arg))"
     case "bool":
         return "\(arg) == 0 ? false : true"
+    case "float":
+        return "Double (\(arg))"
     default:
         if isCoreType(name: type){
             return "\(type) (\(arg))"
@@ -162,7 +191,6 @@ func castGodotToSwift (_ type: String, _ arg: String) -> String {
         //print ("cast \(type)")
         return arg
     }
-    return ""
 }
 
 func getOperatorName (code: Int) -> String {
@@ -197,7 +225,7 @@ func getOperatorName (code: Int) -> String {
 
 func generateArgPrepare (_ args: [PArgument]) -> (prep: String, warnDelete: String) {
     var body = ""
-    var warnDelete = ""
+    let warnDelete = ""
     
     if args.count > 0 {
         for arg in args {
@@ -219,9 +247,9 @@ func generateArgPrepare (_ args: [PArgument]) -> (prep: String, warnDelete: Stri
                 optstorage = ""
             }
             if isPrimitiveType(name: arg.type) || isCoreType(name: arg.type) {
-                body += "    UnsafeRawPointer(&\(argref)\(optstorage)),\n"
+                body += "    UnsafeRawPointer(&\(escapeSwift(argref))\(optstorage)),\n"
             } else {
-                body += "    UnsafeRawPointer(&\(argref).handle),\n"
+                body += "    UnsafeRawPointer(&\(escapeSwift(argref)).handle),\n"
             }
             //body += "    &\(argref),\n"
             //twiwarnDelete += "    _ = \(argref)\n"
@@ -239,3 +267,4 @@ func stripName (_ str: String) -> String {
         return str
     }
 }
+

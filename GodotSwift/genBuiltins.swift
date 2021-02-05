@@ -66,7 +66,7 @@ func generateBuiltinConstants (_ constants: [BConstant], _ gdname: String, _ typ
     for c in constants {
         var mr = ""
         
-        var constType = getGodotType (c.type.rawValue)
+        let constType = getGodotType (c.type.rawValue)
         mr += "public static var \(c.name): \(constType) = {\n"
         mr += "   var constant = godot_variant_get_constant_value_with_cstring (\(typeEnum), \"\(c.name)\")\n"
         let snakeType = camelToSnake(constType)
@@ -106,7 +106,7 @@ func generateBuiltinMethods (_ methods: [BConstructor], _ gdname: String, _ type
         
         mr += "public func \(escapeSwift (snakeToCamel(m.name))) (\(args))\(retSig) {\n"
         var body = ""
-        var resultTypeName = builtinTypeToGdName(m.returnType)
+        let resultTypeName = builtinTypeToGdName(m.returnType)
         body += (has_return ? "var result: \(resultTypeName) = \(resultTypeName)()" : "") + "\n"
         
         let (argPrep, warnDelete) = generateArgPrepare(m.arguments)
@@ -138,14 +138,14 @@ func generateBuiltinOperators (_ operators: [BOperator], _ gdname: String, _ typ
         var mr = ""
         let code = op.operatorOperator
         let rightEnum = builtinTypeToGdNativeEnum (op.otherType)
-        let name = op.name
+        
         if getOperatorName(code: op.operatorOperator) == "in" {
             // TODO: figure out operator "in" later
             continue;
         }
         mr += "static var op_\(code)_\(op.otherType): godot_ptr_operator_evaluator = godot_variant_get_ptr_operator_evaluator (godot_variant_operator(\(code)), \(typeEnum), \(rightEnum))\n"
         mr += "public static func \(getOperatorName (code: op.operatorOperator)) (left: \(typeName), right: \(getGodotType (op.otherType))) -> \(getGodotType (op.returnType)) {\n"
-        var resultTypeName = builtinTypeToGdName(op.returnType)
+        let resultTypeName = builtinTypeToGdName(op.returnType)
         var right: String
         if isCoreType(name: op.otherType) {
             right = "right._\(builtinTypeToGdName(op.otherType))"
@@ -174,7 +174,7 @@ func generateBuiltinMembers (_ members: [BMember], _ gdname: String, _ typeName:
         var mr = ""
         let name = m.name
         let memberType = getGodotType (m.type.rawValue)
-        var resultTypeName = builtinTypeToGdName(m.type.rawValue)
+        let resultTypeName = builtinTypeToGdName(m.type.rawValue)
         mr += "static var get_\(name): godot_ptr_getter = godot_variant_get_ptr_getter_with_cstring (\(typeEnum), \"\(m.name)\")\n"
         mr += "static var set_\(name): godot_ptr_setter = godot_variant_get_ptr_setter_with_cstring (\(typeEnum), \"\(m.name)\")\n"
         mr += "public var \(name): \(memberType) {\n"
