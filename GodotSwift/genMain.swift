@@ -9,9 +9,11 @@
 import Foundation
 
 var referenceTypes: [String:Bool] = [:]
+var typeToChildren: [String:[String]] = [:]
 var tree: [String:WelcomeElement] = [:]
+var openType: [String: Bool] = [:]
 
-func isOverride (_ member: String, on: String) -> Bool {
+func isOverride (_ member: String, on: String, arguments: inout [PArgument]) -> Bool {
     guard var current = tree [on] else {
         return false
     }
@@ -21,6 +23,7 @@ func isOverride (_ member: String, on: String) -> Bool {
         }
         for m in base.methods {
             if m.name == member {
+                arguments = m.arguments
                 return true
             }
         }
@@ -34,8 +37,32 @@ func genBind (start: GodotApi)
     for x in start {
         referenceTypes[stripName (x.name)] = true
     }
+    // Also a convenient hash to go from name to json
+    // And track which types must be opened up
     for x in start {
         tree [x.name] = x
+        openType [x.name] = x.methods.contains { x in x.isVirtual }
+        var base = x.baseClass
+        if base != "" {
+            if var v = typeToChildren [x.name] {
+                v.append(x.baseClass)
+            } else {
+                typeToChildren [x.name] = [x.baseClass]
+            }
+        }
+    }
+    // Now patch all the way to the top, so we can annotate all the open types in the hierarchy
+    for (typeName,isOpen) in openType {
+        if !isOpen { continue }
+        
+        var start = typeName
+        while start != "" {
+            guard let base = tree [start]?.baseClass else {
+                continue
+            }
+            openType [base] = true
+            start = base
+        }
     }
     
     for x in start {
@@ -52,7 +79,8 @@ func genBind (start: GodotApi)
 //            continue
 //        }
         let baseClass = x.baseClass == "" ? "Wrapped" : stripName(x.baseClass)
-        res += "public class \(typeName):  \(baseClass) {\n"
+        let classModifier = openType [x.name] ?? false ? "open" : "public"
+        res += "\(classModifier) class \(typeName):  \(baseClass) {\n"
         let gdname = builtinTypeToGdName (typeName)
         let typeEnum = builtinTypeToGdNativeEnum (typeName)
         
@@ -115,7 +143,7 @@ func generateEnums (_ enums: [Enum]) -> String
     }
     for e in enums {
         var mr: String = ""
-        var ename = e.name == "Type" ? "GType" : e.name
+        let ename = e.name == "Type" ? "GType" : e.name
         
         mr += "public enum \(ename): Int {\n"
         //print ("enum \(e.name)")
@@ -154,6 +182,9 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
         generated += "\n/* Methods */\n"
     }
     var n = 0
+    
+    // There are some duplicates in the API file, probably a transient problem
+    // see: SyntaxHighlighter's _get_line_syntax_highlighting_
     for m in methods {
         var mr: String
         let ret = getGodotType(m.returnType)
@@ -171,24 +202,35 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
 
         let ptrName = "method_\(m.name)"
         mr = "private static var \(ptrName): UnsafeMutablePointer<godot_method_bind> = godot_method_bind_get_method (\"\(originalTypeName)\", \"\(m.name)\")!\n"
-        for arg in m.arguments {
+
+        var arguments: [PArgument] = m.arguments
+        var override = ""
+        
+        // Override lookup is expensive, as it scans methods one by one in an array
+        // so limit the damager
+        //
+        // Additionally, we need to fetch the original argument names, because Godot is
+        // inconsitent with the argument names, and Swift does not like that
+        
+        if m.name == "get_name" || m.name == "_unhandled_input" || m.name == "_input"  {
+            if isOverride(m.name, on: typeName, arguments: &arguments) {
+                override = "override "
+            }
+        }
+        
+        for arg in arguments {
             if args != "" { args += ", " }
             args += getArgumentDeclaration(arg)
         }
 
         let has_return = m.returnType != "void"
 
-        var override = ""
-        
-        // Override lookup is expensive, as it scans methods one by one in an array
-        // so limit the damager
-        if m.name == "get_name" || m.name == "_unhandledInput" || m.name == "_input"  {
-            if isOverride(m.name, on: typeName) {
-                override = "override "
-            }
-        }
-        
-        mr += "public \(override)func \(escapeSwift (snakeToCamel(m.name))) (\(args))\(retSig) {\n"
+        // This is more complicated, we need to find all the children, and
+        // make sure no children is overriding this, so we only flag final
+        // those methods that we do not explicitly override
+        // let modifier = m.isVirtual ? "" : "final "
+        let modifier = ""
+        mr += "public \(modifier) \(override)func \(escapeSwift (snakeToCamel(m.name))) (\(args))\(retSig) {\n"
         var body = ""
         let resultTypeName = builtinTypeToGdName(m.returnType)
         if isCoreType(name: m.returnType) {
@@ -197,9 +239,9 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
             body += (has_return ? "var _result: Int = 0" : "") + "\n"
         }
 
-        let (argPrep, warnDelete) = generateArgPrepare(m.arguments)
+        let (argPrep, warnDelete) = generateArgPrepare(arguments)
         body += argPrep
-        let ptrArgs = m.arguments.count > 0 ? "&args" : "nil"
+        let ptrArgs = arguments.count > 0 ? "&args" : "nil"
         let ptrResult = has_return ? "&_result" : "nil"
 
         body += "miguel_proxy (\(typeName).\(ptrName), handle, \(ptrArgs), \(ptrResult))"
