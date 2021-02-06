@@ -99,7 +99,7 @@ func generateBuiltinMethods (_ methods: [BConstructor], _ gdname: String, _ type
         mr = "static var \(ptrName): godot_ptr_builtin_method = godot_variant_get_ptr_builtin_method_with_cstring (\(typeEnum), \"\(m.name)\")\n"
         for arg in m.arguments {
             if args != "" { args += ", " }
-            args += getArgumentDeclaration(arg)
+            args += getArgumentDeclaration(arg, eliminate: "")
         }
         
         let has_return = m.returnType != "void"
@@ -217,7 +217,7 @@ func generateBuiltinCtors (_ methods: [BConstructor], _ gdname: String, _ typeNa
         ctorCount += 1
         for arg in m.arguments {
             if args != "" { args += ", " }
-            args += getArgumentDeclaration(arg)
+            args += getArgumentDeclaration(arg, eliminate: "")
         }
         
         mr += "public init (\(args)) {\n"

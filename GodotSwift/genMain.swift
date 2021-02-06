@@ -8,10 +8,23 @@
 
 import Foundation
 
+// Populated with the types loaded from the api.json, we assume they are all reference types
+// anything else is not
 var referenceTypes: [String:Bool] = [:]
-var typeToChildren: [String:[String]] = [:]
+
+// Maps a typename to its toplevel Json element
 var tree: [String:WelcomeElement] = [:]
+
+// Flags types that should be "open", because they contain
+// a virtual method that the user can override
 var openType: [String: Bool] = [:]
+
+// The list of enum values that have been seen, so that
+// constants can be introduced for any missing values
+var seenEnumKeys = Set<String>()
+
+var typeToChildren: [String:[String]] = [:]
+
 
 func isOverride (_ member: String, on: String, arguments: inout [PArgument]) -> Bool {
     guard var current = tree [on] else {
@@ -89,10 +102,12 @@ func genBind (start: GodotApi)
         res += indent ("    super.init (nativeHandle: nativeHandle)\n")
         res += indent ("}\n\n")
         
-        //res += indent (generateMainConstants (x.constants, gdname, typeName, typeEnum))
         //res += indent (generateMainCtors (x.constructors, gdname, typeName, typeEnum))
-        res += indent (generateMainMethods (x.methods, gdname, typeName, x.name, typeEnum))
+        var propertyReferenceMethods = Set<String> ()
+        res += indent (generateProperties (x.properties, x.methods, &propertyReferenceMethods))
+        res += indent (generateMainMethods (x.methods, gdname, typeName, x.name, typeEnum, usedMethods: propertyReferenceMethods))
         res += indent (generateEnums (x.enums))
+        res += indent (generateMainConstants (x.constants))
         //res += indent (generateMainMembers (x.members, gdname, typeName, typeEnum))
         //res += indent (generateMainOperators (x.operators, gdname, typeName, typeEnum))
         res += "}\n\n"
@@ -135,6 +150,71 @@ func getDropPrefix (_ e: Enum) -> String
     return ""
 }
 
+func generateProperties (_ properties: [Property], _ methods: [Method], _ referencedMethods: inout Set<String>) -> String
+{
+    var generated = ""
+    if properties.count > 0 {
+        generated += "\n/* Properties */\n\n"
+    }
+    
+    for p in properties {
+        var mr: String = ""
+        var type: String?
+    
+        if p.index != -1 {
+            // TODO: the challenge is that we need to lookup the getter/setter method
+            // to lookup the type of the parameter, and then cast this integer value to
+            // it, some of the issues are:
+            // Int to Enum
+            // Int to bool
+            // Int to Double
+            continue
+        }
+        // blend_point_0/node - no idea what this is
+        if p.name.contains("/"){
+            continue
+        }
+        // Ignore properties that only have getters, just let the setter
+        // method be surfaced instead
+        if p.getter == "" {
+            continue
+        }
+        // Lookup the type from the method, not the property
+        for x in methods {
+            if x.name == p.getter {
+                type = getGodotType(x.returnType)
+            }
+        }
+        // There are properties declared, but they do not actually exist
+        // CurveTexture claims to have a get_width, but the method does not exist
+        if type == nil {
+            continue
+        }
+        if type!.hasPrefix("Vector3.Axis") {
+            continue
+        }
+        var optSet = p.index == -1 ? "" : ", \(p.index)"
+        var optGet = p.index == -1 ? "" : "\(p.index)"
+        mr += "public var \(escapeSwift (snakeToCamel(p.name))): \(type!) {\n"
+        mr += "   get {\n"
+        mr += "        return \(escapeSwift (snakeToCamel(p.getter))) (\(optGet))\n"
+        mr += "   }\n"
+        if p.setter != "" {
+            mr += "   set {\n"
+            mr += "       \(escapeSwift (snakeToCamel(p.setter))) (newValue\(optSet))\n"
+            mr += "   }\n"
+            
+            referencedMethods.insert (p.setter)
+        }
+        mr += "}\n\n"
+        generated += mr
+        if p.getter != "get_name" {
+            referencedMethods.insert (p.getter)
+        }
+    }
+    return generated
+}
+
 func generateEnums (_ enums: [Enum]) -> String
 {
     var generated = ""
@@ -158,6 +238,7 @@ func generateEnums (_ enums: [Enum]) -> String
                 continue
             }
             seenValues.insert(v.value)
+            seenEnumKeys.insert(v.key)
             var k = v.key
             k = snakeToCamel(String (k.dropFirst(drop.count)))
             if k.first!.isNumber {
@@ -175,7 +256,8 @@ func generateEnums (_ enums: [Enum]) -> String
     }
     return generated
 }
-func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: String, _ originalTypeName: String, _ typeEnum: String) -> String
+
+func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: String, _ originalTypeName: String, _ typeEnum: String, usedMethods: Set<String>) -> String
 {
     var generated = ""
     if methods.count > 0 {
@@ -187,10 +269,12 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
     // see: SyntaxHighlighter's _get_line_syntax_highlighting_
     for m in methods {
         var mr: String
-        let ret = getGodotType(m.returnType)
+        var returnType = m.returnType
+        
+        let ret = getGodotType(returnType)
 
         // This is referenced, but does not exist?
-        if m.returnType == ("enum.Vector3::Axis") {
+        if returnType == ("enum.Vector3::Axis") {
             continue
         }
         n += 1
@@ -206,6 +290,23 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
         var arguments: [PArgument] = m.arguments
         var override = ""
         
+        // Setters sometimes have the wrong type (the base type), but getters have the right one (the enum)
+        // so fetch that
+        if (m.name.hasPrefix("set") || m.name.hasPrefix ("_set")) && usedMethods.contains (m.name) {
+            if m.name == "_set_type_cache" {
+                print ()
+            }
+            let rest = m.name.hasPrefix ("_") ? "_get" + m.name.dropFirst(4) : "get" + m.name.dropFirst(3)
+            
+            for n in methods {
+                if n.name == rest  {
+                    arguments [0].type = n.returnType
+                    break
+                }
+            }
+        }
+
+
         // Override lookup is expensive, as it scans methods one by one in an array
         // so limit the damager
         //
@@ -218,22 +319,33 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
             }
         }
         
+        // If this is internal, and being reference by a property, hide it
+        var visibility: String
+        var eliminate: String
+        if usedMethods.contains (m.name) {
+            visibility = "private"
+            eliminate = "_ "
+        } else {
+            visibility = "public"
+            eliminate = ""
+        }
         for arg in arguments {
             if args != "" { args += ", " }
-            args += getArgumentDeclaration(arg)
+            args += getArgumentDeclaration(arg, eliminate: eliminate)
         }
 
-        let has_return = m.returnType != "void"
+        let has_return = returnType != "void"
 
         // This is more complicated, we need to find all the children, and
         // make sure no children is overriding this, so we only flag final
         // those methods that we do not explicitly override
         // let modifier = m.isVirtual ? "" : "final "
         let modifier = ""
-        mr += "public \(modifier) \(override)func \(escapeSwift (snakeToCamel(m.name))) (\(args))\(retSig) {\n"
+
+        mr += "\(visibility)\(modifier) \(override)func \(escapeSwift (snakeToCamel(m.name))) (\(args))\(retSig) {\n"
         var body = ""
-        let resultTypeName = builtinTypeToGdName(m.returnType)
-        if isCoreType(name: m.returnType) {
+        let resultTypeName = builtinTypeToGdName(returnType)
+        if isCoreType(name: returnType) {
             body += (has_return ? "var _result: \(resultTypeName) = \(resultTypeName)()" : "") + "\n"
         } else {
             body += (has_return ? "var _result: Int = 0" : "") + "\n"
@@ -247,11 +359,11 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
         body += "miguel_proxy (\(typeName).\(ptrName), handle, \(ptrArgs), \(ptrResult))"
         body += "\n"
         if has_return {
-            if let _ = referenceTypes [m.returnType] {
-                body += "return \(m.returnType) (nativeHandle: UnsafeRawPointer (bitPattern: _result)!)\n"
+            if let _ = referenceTypes [returnType] {
+                body += "return \(returnType) (nativeHandle: UnsafeRawPointer (bitPattern: _result)!)\n"
             } else {
-                let cast = castGodotToSwift (m.returnType, "_result")
-                body += "return \(cast) /* \(m.returnType) */\n"
+                let cast = castGodotToSwift (returnType, "_result")
+                body += "return \(cast) /* \(returnType) */\n"
             }
         }
         mr += indent (body)
@@ -263,29 +375,27 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
     return generated
 }
 
-//
-//func generateMainConstants (_ constants: [BConstant], _ gdname: String, _ typeName: String, _ typeEnum: String) -> String
-//{
-//    var generated = ""
-//
-//    if constants.count > 0 {
-//        generated += "\n/* Constants */\n"
-//    }
-//    for c in constants {
-//        var mr = ""
-//
-//        var constType = getGodotType (c.type.rawValue)
-//        mr += "public static var \(c.name): \(constType) = {\n"
-//        mr += "   var constant = godot_variant_get_constant_value_with_cstring (\(typeEnum), \"\(c.name)\")\n"
-//        let snakeType = camelToSnake(constType)
-//        mr += "   defer { godot_variant_destroy (&constant) }\n"
-//        mr += "   return \(constType) (godot_variant_as_\(snakeType) (&constant))\n"
-//        mr += "} ()\n"
-//        generated += mr
-//    }
-//    return generated
-//}
-//
+func generateMainConstants (_ constants: [String:Int]) -> String
+{
+    var generated = ""
+    var first = true
+    for c in constants.keys {
+        var mr = ""
+
+        if seenEnumKeys.contains(c) {
+            continue
+        }
+
+        if first {
+            generated += "\n/* Constants */\n"
+            first = false
+        }
+        mr += "public let \(c): Int = \(constants [c]!)\n"
+        generated += mr
+    }
+    return generated
+}
+
 
 //func generateMainOperators (_ operators: [BOperator], _ gdname: String, _ typeName: String, _ typeEnum: String) -> String
 //{

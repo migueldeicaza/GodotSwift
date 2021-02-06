@@ -78,7 +78,7 @@ func isCoreType (name: String) -> Bool {
 }
 
 func isPrimitiveType (name: String) -> Bool {
-    return name == "int" || name == "bool" || name == "float" || name == "void"
+    return name == "int" || name == "bool" || name == "float" || name == "void" || name.hasPrefix("enum")
 }
 
 func escapeSwift (_ id: String) -> String {
@@ -157,10 +157,10 @@ func builtinTypeToGdNativeEnum (_ t: String) -> String {
     "GODOT_VARIANT_TYPE_" + (camelToSnake(t).uppercased())
 }
 
-func getArgumentDeclaration (_ argument: PArgument) -> String {
+func getArgumentDeclaration (_ argument: PArgument, eliminate: String) -> String {
     //let optNeedInOut = isCoreType(name: argument.type) ? "inout " : ""
     let optNeedInOut = ""
-    return "\(escapeSwift (snakeToCamel (argument.name))): \(optNeedInOut)\(getGodotType(argument.type))"
+    return "\(eliminate)\(escapeSwift (snakeToCamel (argument.name))): \(optNeedInOut)\(getGodotType(argument.type))"
 }
 
 func builtinTypeToGdName (_ name: String) -> String {
