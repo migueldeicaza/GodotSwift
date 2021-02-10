@@ -1,27 +1,25 @@
 
-# GodotSwift
+Swift bindings for the [Godot Game Engine](https://godotengine.org)
 
-These scripts produce a Swift API that can be used to access the Godot
-API.
+This is currently a work in progress, and is aimed at the Godot 4.0
+release.
 
-To build, you will need both the `builtin-api.json` and `api.json`
-that are produced by Godot 4.0 (at the time of this writing in
-February 2021, it is the development version of Godot).
+Today, Godot support both GDScript and C# via Mono as scripting
+languages.  The intent of this binding is to provide a compiled
+alternative that does not use a garbage collector while still
+surfacing a modern, user-friendly, and productive programming language
+to developers.
 
-Build your Godot, and then run these commands:
+Under the `Generator` directory, you will find the API generator that
+parses the Godot API files and produces the Swift binding.  The
+`Binding` directory contains the manual parts of the Swift support
+that are combined with the generated pieces to produce the Swift API
+that developers can use.
 
-```
-# bin/godot.osx.tools.x86_64 --gdnative-generate-json-builtin-api builtin-api.json
+To build this, first build the Xcode project in `Generator` and run it,
+and then use `swift build` in the Binding directory.
 
-# bin/godot.osx.tools.x86_64 --gdnative-generate-json-api api.json
-```
+# Inspiration
 
-In addition, for now, you need the supporting infrastructure for this binding,
-which comes from `GodotSwiftLink`.   That module should eventually be added
-to Godot.
-
-Then open this project in Xcode and run.   You will need to change the paths
-in the main file to point to your Godot directory as well as the output
-directory.
-
-The result will be a binding for Godot.
+The inspiration from this binding comes from both the Mono bindings
+in Godot, as well as Godot-cpp.

@@ -3,15 +3,9 @@
 //  GodotSwift
 //
 //  Created by Miguel de Icaza on 5/20/20.
-//  Copyright © 2020 Miguel de Icaza. All rights reserved.
+//  Copyright © 2020-2021 Miguel de Icaza. MIT Licensed
 //
-// TODO: Variant
 // TODO: Remap method name `init` to initialize
-// Create the lazy variables to create the method call handle
-// Create the C# method that calls the C API that calls the C++ API
-// Create the swift bridge header file and C++ code
-// Properties
-// Generate the top-level constants rather than rely on the old C++ generator
 
 
 import Foundation
@@ -21,10 +15,17 @@ typealias GodotApi = Welcome
 typealias GodotBuiltinApiElement = BWelcomeElement
 typealias GodotBuiltinApi = BWelcome
 
-let projectDir = "/Users/miguel/cvs/godot-master/godot"
-let swiftGodot = projectDir + "/modules/swift"
-let swiftOutput = swiftGodot + "/glue/GodotSwift/Sources/GodotSwift/Generated"
-let swiftCout = swiftGodot + "/glue"
+var args = CommandLine.arguments
+
+let projectDir = args.count > 1 ? args [1] : "/Users/miguel/cvs/godot-master/godot"
+var peer = "../../../../../../Binding/Sources/GodotSwift/generated"
+
+let outputDir = args.count > 2 ? args [2] : peer
+
+print ("Usage is: generator [godot-main-directory [output-directory]]")
+print ("where godot-main-directory contains api.json and builtin-api.json")
+print ("If unspecified, this will default to the built-in versions")
+
 let jsonData = try! Data(contentsOf: URL(fileURLWithPath: projectDir + "/api.json"))
 let jsonBuiltinData = try! Data(contentsOf: URL(fileURLWithPath: projectDir + "/builtin-api.json"))
 let jsonApi = try! JSONDecoder().decode(GodotApi.self, from: jsonData)
@@ -53,5 +54,9 @@ extension String {
     }
 }
 
+var p = FileManager.default.currentDirectoryPath + "/" + peer
+
+print ("Running with projectDir=$(projectDir) and output=\(outputDir)")
 builtinBind (start: jsonBuiltinApi)
 genBind(start: jsonApi)
+print ("Done")

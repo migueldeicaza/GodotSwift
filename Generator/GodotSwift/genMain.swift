@@ -3,7 +3,7 @@
 //  GodotSwift
 //
 //  Created by Miguel de Icaza on 2/3/21.
-//  Copyright © 2021 Miguel de Icaza. All rights reserved.
+//  Copyright © 2021 Miguel de Icaza. MIT Licensed
 //
 
 import Foundation
@@ -112,7 +112,7 @@ func genBind (start: GodotApi)
         //res += indent (generateMainOperators (x.operators, gdname, typeName, typeEnum))
         res += "}\n\n"
         
-        try! res.write(toFile: "/Users/miguel/cvs/GodotSwiftLink/Sources/GodotSwift/generated/\(typeName).gen.swift", atomically: true, encoding: .utf8)
+        try! res.write(toFile: "\(outputDir)/\(typeName).gen.swift", atomically: true, encoding: .utf8)
     }
 }
 

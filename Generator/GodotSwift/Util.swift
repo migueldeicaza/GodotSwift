@@ -3,7 +3,7 @@
 //  GodotSwift
 //
 //  Created by Miguel de Icaza on 2/1/21.
-//  Copyright © 2021 Miguel de Icaza. All rights reserved.
+//  Copyright © 2021 Miguel de Icaza. MIT Licensed
 //
 
 import Foundation
