@@ -9,6 +9,7 @@ let package = Package(
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
             name: "GodotSwift",
+            type: .dynamic,
             targets: ["GodotSwift"]),
     ],
     dependencies: [
@@ -19,11 +20,13 @@ let package = Package(
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
-            name: "Godot"),
+            name: "Godot",
+            exclude: ["include/README.md"]),
         .target(
             name: "GodotSwift",
             dependencies: ["Godot"],
-	    swiftSettings: [.unsafeFlags (["-suppress-warnings"])]),
+	        swiftSettings: [.unsafeFlags (["-suppress-warnings"])],
+            linkerSettings: [.unsafeFlags (["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])]),
         .testTarget(
             name: "GodotSwiftTests",
             dependencies: ["GodotSwift"]),
