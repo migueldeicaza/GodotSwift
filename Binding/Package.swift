@@ -26,7 +26,8 @@ let package = Package(
             name: "GodotSwift",
             dependencies: ["Godot"],
 	        swiftSettings: [.unsafeFlags (["-suppress-warnings"])],
-            linkerSettings: [.unsafeFlags (["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])]),
+            linkerSettings: [.unsafeFlags (["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])]
+        ),
         .testTarget(
             name: "GodotSwiftTests",
             dependencies: ["GodotSwift"]),
