@@ -10,6 +10,8 @@ public class Godot {
     static var library: UnsafeMutableRawPointer!
     static var language_index: Int32 = 0
     static var nativeScriptHandle: UnsafeMutableRawPointer?
+    
+    
 }
 
 @_cdecl("_godot_swift_wrapper_create")
@@ -130,20 +132,33 @@ func manualRegister () {
     attr.default_value = Variant (String ("SimpleDefault"))._godot_variant
     attr.usage = GODOT_PROPERTY_USAGE_DEFAULT
     
+    func myGet (object: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?, userData: UnsafeMutableRawPointer?) -> godot_variant {
+        var variant = Variant ("SimpleClass")
+        
+        return variant._godot_variant
+    }
     var getFunc = godot_nativescript_property_get_func ()
+    getFunc.free_func = Godot.api.godot_free
+    getFunc.get_func = myGet
     var setFunc = godot_nativescript_property_set_func ()
     
-//    void GDAPI godot_nativescript_register_property(void *p_gdnative_handle, const char *p_name, const char *p_path, godot_nativescript_property_attributes *p_attr, godot_nativescript_property_set_func p_set_func, godot_nativescript_property_get_func p_get_func);
-
+    Godot.nativescript_api.godot_nativescript_register_property (Godot.nativeScriptHandle, "SimpleClass", "name", &attr, setFunc, getFunc)
     
-    print ("This turd does not compile, Swift refuses because it claims it is ambigious")
-//    Godot.nativescript_api.godot_nativescript_register_property (Godot.nativeScriptHandle, "SimpleClass", "name", &attr, getFunc, setFunc)
-//    var x: UnsafePointer<Int8>? = nil
-//    var y: UnsafeMutablePointer<godot_nativescript_property_attributes>? = nil
-//    
-//    print ("This turd does not compile")
-    // Godot.nativescript_api.godot_nativescript_register_property (Godot.nativeScriptHandle, x, x, y, getFunc, setFunc)
+    func myMethod (object: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?, userData: UnsafeMutableRawPointer?, argc: Int32, argv: UnsafeMutablePointer<UnsafeMutablePointer<godot_variant>?>?) -> godot_variant
+    {
+        if let args = argv {
+            if let t = args.pointee {
+                return t.pointee
+            }
+        }
+        return Variant ("Hello")._godot_variant
+    }
     
+    var mattr = godot_nativescript_method_attributes ()
+    mattr.rpc_type = GODOT_METHOD_RPC_MODE_DISABLED
+    var method = godot_nativescript_instance_method ()
+    method.method = myMethod
+    Godot.nativescript_api.godot_nativescript_register_method (Godot.nativeScriptHandle, "SimpleClass", "method", mattr, method)
 }
 
 @_cdecl("godot_nativescript_init")
