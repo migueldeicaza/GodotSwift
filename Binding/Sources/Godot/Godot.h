@@ -9,6 +9,7 @@
 #define File_h
 
 #include <gdnative/gdnative.h>
+#include <gdnative_api_struct.gen.h>
 
 void miguel_proxy (godot_method_bind *p_method_bind, const void *p_instance, const void **p_args, void *p_ret);
 #endif /* File_h */

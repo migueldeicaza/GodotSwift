@@ -15,6 +15,9 @@ typealias GodotApi = Welcome
 typealias GodotBuiltinApiElement = BWelcomeElement
 typealias GodotBuiltinApi = BWelcome
 
+// IF we want a single file, or one file per type
+var singleFile = true
+
 var args = CommandLine.arguments
 
 let projectDir = args.count > 1 ? args [1] : "./GodotApi/"

@@ -1,3 +1,12 @@
+//
+// Defs.swift: definitions that mimic the Godot definitions for these constants
+//
+// Released under the terms of the MIT license
+//
+// Authors:
+//  Miguel de Icaza on 3/4/20.
+//
+
 public enum ClockDirection: Int {
     case clockwise
     case counterClockwise

@@ -11,9 +11,16 @@ import Foundation
 import Godot
 open class Wrapped {
     internal var handle: UnsafeRawPointer
-    // var typeTag: Int64
+    internal var typeTag: OpaquePointer?
     
     init (nativeHandle: UnsafeRawPointer){
         self.handle = nativeHandle
+        self.typeTag = nil
     }
+
+    init (nativeHandle: UnsafeRawPointer, typeTag: OpaquePointer){
+        self.handle = nativeHandle
+        self.typeTag = typeTag
+    }
+
 }
