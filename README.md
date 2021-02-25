@@ -16,7 +16,8 @@ parses the Godot API files and produces the Swift binding.  The
 that are combined with the generated pieces to produce the Swift API
 that developers can use.
 
-To build this, first build the Xcode project in `Generator` and run it,
+To build this, first copy godot api json files into `Generator/GodotApi` 
+and run `swift run gen` in the Generator directory.
 and then use `swift build` in the Binding directory.
 
 # Inspiration
