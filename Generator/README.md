@@ -17,10 +17,12 @@ Build your Godot, and then run these commands:
 
 In addition, for now, you need the supporting infrastructure for this
 binding, which comes from `Binding` directory, a peer to this
-directory.  
-
-Then open this project in Xcode and run.   You will need to change the paths
-in the main file to point to your Godot directory as well as the output
 directory.
+Copy the `builtin-api.json` and `api.json` into `intoGodotApi` directory.
+
+Then run `swift run gen` in this directory.   You may need to specify the path of 
+`api.json` directory after the command if you don't copy these files into default 
+directory `GodotApi`. eg. `swift run gen /godot-master/godot`  Also you can specify
+output directory after it.
 
 The result will be a binding for Godot.

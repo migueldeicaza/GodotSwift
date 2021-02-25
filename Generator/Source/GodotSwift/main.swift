@@ -17,14 +17,14 @@ typealias GodotBuiltinApi = BWelcome
 
 var args = CommandLine.arguments
 
-let projectDir = args.count > 1 ? args [1] : "/Users/miguel/cvs/godot-master/godot"
-var peer = "../../../../../../Binding/Sources/GodotSwift/generated"
+let projectDir = args.count > 1 ? args [1] : "./GodotApi/"
+var peer = "../Binding/Sources/GodotSwift/generated"
 
 let outputDir = args.count > 2 ? args [2] : peer
 
-print ("Usage is: generator [godot-main-directory [output-directory]]")
-print ("where godot-main-directory contains api.json and builtin-api.json")
-print ("If unspecified, this will default to the built-in versions")
+print ("Usage is: swift run gen [godot-api-json-directory] [output-directory]")
+print ("where godot-api-json-directory contains api.json and builtin-api.json")
+print ("If unspecified, this will default directory")
 
 let jsonData = try! Data(contentsOf: URL(fileURLWithPath: projectDir + "/api.json"))
 let jsonBuiltinData = try! Data(contentsOf: URL(fileURLWithPath: projectDir + "/builtin-api.json"))
