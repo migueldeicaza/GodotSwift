@@ -96,7 +96,7 @@ func genBind (start: GodotApi)
         let typeEnum = builtinTypeToGdNativeEnum (typeName)
         
         
-        res += indent ("override init (nativeHandle: UnsafeRawPointer) {\n")
+        res += indent ("public required init (nativeHandle: UnsafeRawPointer) {\n")
         res += indent ("    super.init (nativeHandle: nativeHandle)\n")
         res += indent ("}\n\n")
         

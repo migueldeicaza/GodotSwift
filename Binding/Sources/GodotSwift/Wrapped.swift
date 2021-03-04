@@ -13,7 +13,7 @@ open class Wrapped {
     internal var handle: UnsafeRawPointer
     internal var typeTag: OpaquePointer?
     
-    init (nativeHandle: UnsafeRawPointer){
+    public required init (nativeHandle: UnsafeRawPointer){
         self.handle = nativeHandle
         self.typeTag = nil
     }
