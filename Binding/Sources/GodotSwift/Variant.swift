@@ -10,7 +10,29 @@
 import Foundation
 import Godot
 
-public class Variant {
+/**
+ * Variant is a wrapper for varios Godot Data types, similar to `AnyObject` in Swift, but
+ * used for interoperability with the Godot APIs.   A variant can contain any of the values
+ * defined in `Variant.Kind` and there are constructors from various fundamental
+ * data types into a Variant.
+ *
+ * For example, you can wrap a number into a Variant like this:
+ * ```
+ * let myWrappedNumer = Variant (14)
+ * ```
+ *
+ * In addition, there are failable initializer for all the native types that can be created
+ * from a variant, to do this:
+ * ```
+ * if let myNumber = Int (myWrappedNumber) {
+ *    print ("The number is \(myNumber)")
+ * }
+ * ```
+ *
+ * You can determine the kind of object wrapped by the variant by examining the `kind` property.
+ *
+ */
+public class Variant: CustomDebugStringConvertible {
     var _godot_variant: godot_variant = godot_variant ()
     
     init (_ native: godot_variant)
@@ -42,7 +64,7 @@ public class Variant {
 
         // misc types
         case color
-        case stringCame
+        case stringName
         case nodePath
         case rid
         case object
@@ -231,5 +253,330 @@ public class Variant {
     public init (_ value: PackedColorArray) {
         godot_variant_new_packed_color_array(&_godot_variant, &value._godot_packed_color_array)
     }
+    
+    /// Returns the kind of this variant
+    public var kind: Kind {
+        get {
+            let t = godot_variant_get_type(&_godot_variant)
+            return Kind (rawValue: Int (t.rawValue)) ?? .nilKind
+        }
+    }
+    
+    public var debugDescription: Swift.String {
+        get {
+            let t = godot_variant_get_type(&_godot_variant)
+            if let k = Kind (rawValue: Int (t.rawValue)) {
+                return "\(k)"
+            }
+            return "\(t)"            
+        }
+    }
+    
+    /// Returns the variant as an `object`, which is an UnsafeMutableRawPointer
+    public func asObject () -> UnsafeMutableRawPointer?
+    {
+        if godot_variant_get_type(&_godot_variant) == GODOT_VARIANT_TYPE_OBJECT {
+            Godot.api.godot_variant_as_object (&_godot_variant)
+        }
+        return nil
+    }
 }
 
+public extension Bool {
+    public init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_BOOL {
+            self.init(Godot.api.godot_variant_as_bool (&source._godot_variant) != 0 ? true : false)
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Int {
+    public init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_INT {
+            self.init(Godot.api.godot_variant_as_int (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Double {
+    public init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_FLOAT {
+            self.init(Godot.api.godot_variant_as_float (&source._godot_variant) != 0 ? true : false)
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension String {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_STRING {
+            self.init(Godot.api.godot_variant_as_string (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Vector2 {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_VECTOR2 {
+            self.init(Godot.api.godot_variant_as_vector2 (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Vector2i {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_VECTOR2I {
+            self.init(Godot.api.godot_variant_as_vector2i (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Vector3 {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_VECTOR3 {
+            self.init(Godot.api.godot_variant_as_vector3 (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Vector3i {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_VECTOR3I {
+            self.init(Godot.api.godot_variant_as_vector3i (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Rect2 {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_RECT2 {
+            self.init(Godot.api.godot_variant_as_rect2 (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Rect2i {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_RECT2I {
+            self.init(Godot.api.godot_variant_as_rect2i (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Plane {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PLANE {
+            self.init(Godot.api.godot_variant_as_plane (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension AABB {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_AABB {
+            self.init(Godot.api.godot_variant_as_aabb (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Quat {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_QUAT {
+            self.init(Godot.api.godot_variant_as_quat (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Basis {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_BASIS {
+            self.init(Godot.api.godot_variant_as_basis (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Transform {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_TRANSFORM {
+            self.init(Godot.api.godot_variant_as_transform (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Transform2D {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_TRANSFORM2D {
+            self.init(Godot.api.godot_variant_as_transform2d (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+public extension Color {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_COLOR {
+            self.init(Godot.api.godot_variant_as_color (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension NodePath {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_NODE_PATH {
+            self.init(Godot.api.godot_variant_as_node_path (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension RID {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_RID {
+            self.init(Godot.api.godot_variant_as_rid (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Dictionary {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_DICTIONARY {
+            self.init(Godot.api.godot_variant_as_dictionary (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension Array {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_ARRAY {
+            self.init(Godot.api.godot_variant_as_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedByteArray {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_BYTE_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_byte_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedInt32Array {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_INT32_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_int32_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedInt64Array {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_INT64_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_int64_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedFloat32Array {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_FLOAT32_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_float32_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedFloat64Array {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_FLOAT64_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_float64_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedStringArray {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_STRING_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_string_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedVector2Array {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_VECTOR2_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_vector2_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedVector3Array {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_VECTOR3_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_vector3_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}
+
+public extension PackedColorArray {
+    public convenience init? (_ source: Variant) {
+        if godot_variant_get_type(&source._godot_variant) == GODOT_VARIANT_TYPE_PACKED_COLOR_ARRAY {
+            self.init(Godot.api.godot_variant_as_packed_color_array (&source._godot_variant))
+        } else {
+            return nil
+        }
+    }
+}

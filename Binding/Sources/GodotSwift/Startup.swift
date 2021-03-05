@@ -6,7 +6,7 @@ var poorMansMap: [UnsafeMutableRawPointer:Wrapped] = [:]
 @_cdecl("_createTypeInstance")
 func createTypeInstance (instance: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
 {
-    print ("createTypeIntance2")
+    print ("Swift: createTypeIntance2")
     guard let md = methodData else {
         return nil
     }
@@ -16,7 +16,7 @@ func createTypeInstance (instance: UnsafeMutableRawPointer?, methodData: UnsafeM
     let swiftInstance = wrappedType.init(nativeHandle: instance!)
     poorMansMap [instance!] = swiftInstance
     let o = Unmanaged.passRetained (swiftInstance).toOpaque ()
-    print ("Creating ins=\(instance) o=\(o)")
+    print ("Swift: Creating ins=\(instance) o=\(o)")
     
     return o
 }
@@ -24,7 +24,7 @@ func createTypeInstance (instance: UnsafeMutableRawPointer?, methodData: UnsafeM
 @_cdecl("_destroyTypeInstance")
 func destroyTypeInstance (instance: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?, data: UnsafeMutableRawPointer?)
 {
-    print ("destroyInstance2")
+    print ("Swift: destroyInstance2")
     guard let wptr = data else {
         return
     }
@@ -37,7 +37,13 @@ class ProxyWrappers {
     var setFunc: ((Wrapped, Variant) -> ())? = nil
 }
     
-
+public typealias MethodSignature = (_ instance: Wrapped, _ args: [Variant]) -> Variant
+class MethodWrapper {
+    var method: MethodSignature
+    public init (_ m: @escaping MethodSignature) {
+        self.method = m
+    }
+}
 /**
  * ClassBuilder allows you to surface properties, methods and signals implemented in Swift to the Godot world
  */
@@ -48,7 +54,15 @@ public struct ClassBuilder<T:Wrapped> {
     }
     
     /// Registers a property for the class
-    public func registerProperty (name: Swift.String, defaultValue: Variant, kind: Variant.Kind, getFunc: ((Wrapped)-> Variant)? = nil, setFunc: ((Wrapped, Variant) -> ())? = nil, rpcMode: GodotMethodRpcMode = .disabled, usage: GodotPropertyUsage = .`default`, hint: GodotPropertyHint = .none, hintString: Swift.String = "")
+    public func registerProperty (name: Swift.String,
+                                  defaultValue: Variant,
+                                  kind: Variant.Kind,
+                                  getFunc: ((Wrapped)-> Variant)? = nil,
+                                  setFunc: ((Wrapped, Variant) -> ())? = nil,
+                                  rpcMode: GodotMethodRpcMode = .disabled,
+                                  usage: GodotPropertyUsage = .`default`,
+                                  hint: GodotPropertyHint = .none,
+                                  hintString: Swift.String = "")
     {
         var attr = godot_nativescript_property_attributes ()
         attr.type = Int64 (Variant.Kind.string.rawValue)
@@ -60,7 +74,7 @@ public struct ClassBuilder<T:Wrapped> {
         
         func getProxy (object: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?, userData: UnsafeMutableRawPointer?) -> godot_variant {
             
-            print ("*** ON GETPROXY got \(object)")
+            print ("Swift:  ON GETPROXY got \(object)")
             let getAny : Unmanaged<ProxyWrappers> = Unmanaged.fromOpaque(methodData!)
             let u = getAny.takeUnretainedValue()
             let getter = u.getFunc
@@ -100,6 +114,42 @@ public struct ClassBuilder<T:Wrapped> {
 
         Godot.nativescript_api.godot_nativescript_register_property (Godot.nativeScriptHandle, className, name, &attr, setDesc, getDesc)
     }
+    
+    public func registerMethod (name: Swift.String,
+                                method: @escaping MethodSignature,
+                                rpcMode: GodotMethodRpcMode = .disabled)
+    {
+        func proxyMethod (object: UnsafeMutableRawPointer?,
+                          methodData: UnsafeMutableRawPointer?,
+                          userData: UnsafeMutableRawPointer?,
+                          argc: Int32,
+                          argv: UnsafeMutablePointer<UnsafeMutablePointer<godot_variant>?>?) -> godot_variant
+        {
+            var instance = poorMansMap [object!]!
+            var args: [Variant] = []
+            
+            if let argvptr = argv {
+                for idx in 0..<argc {
+                    if let variantArg = (argvptr+Int(idx)).pointee {
+                        args.append(Variant (variantArg.pointee))
+                    }
+                }
+            }
+            var mw = Unmanaged<AnyObject>.fromOpaque(methodData!).takeUnretainedValue() as? MethodWrapper
+            
+            return mw!.method (instance, args)._godot_variant
+        }
+        
+        var payload = MethodWrapper(method)
+        var mattr = godot_nativescript_method_attributes ()
+        mattr.rpc_type = rpcMode.toNative ()
+        var methodDesc = godot_nativescript_instance_method ()
+        methodDesc.method = proxyMethod
+        methodDesc.method_data = Unmanaged.passRetained(payload).toOpaque()
+        
+        Godot.nativescript_api.godot_nativescript_register_method (
+            Godot.nativeScriptHandle, className, name, mattr, methodDesc)
+    }
 }
 
 public class Godot {
@@ -134,7 +184,7 @@ public class Godot {
      */
     public static func registerClass<T:Wrapped> (_ type: T.Type, asName: Swift.String? = nil, asBaseClassName: Swift.String? = nil) -> ClassBuilder<T>? {
         guard let superclass = Swift._getSuperclass (type) else {
-            print ("Attempted to register the Wrapped class")
+            print ("Swift: Attempted to register the Wrapped class")
             return nil
         }
         var name = asName ?? "\(type)"
@@ -150,6 +200,7 @@ public class Godot {
         destroy.destroy_func = destroyTypeInstance
         destroy.method_data = payload
         
+        print ("Swift: Registering class \(name) with baseClass=\(baseName)")
         Godot.nativescript_api.godot_nativescript_register_class (Godot.nativeScriptHandle, name, baseName, create, destroy)
         return ClassBuilder<T> (className: name)
     }
@@ -159,20 +210,20 @@ public class Godot {
 @_cdecl("_godot_swift_wrapper_create")
 func wrapper_create (data: UnsafeMutableRawPointer?, typeTag: UnsafeRawPointer?, instance: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
 {
-    print ("Wrapper create\n")
+    print ("Swift: Wrapper create\n")
     guard let ins = instance else {
         return nil
     }
     let wrapped = Wrapped(nativeHandle: ins, typeTag: OpaquePointer(typeTag!))
     let o = Unmanaged.passRetained(wrapped).toOpaque()
-    print ("Creating ins=\(ins) o=\(o)")
+    print ("Swift: Creating ins=\(ins) o=\(o)")
     return o
 }
 
 @_cdecl ("_godot_swift_wrapper_destroy")
 func wrapper_destroy (data: UnsafeMutableRawPointer?, wrapper: UnsafeMutableRawPointer?)
 {
-    print ("Wrapper destroy\n")
+    print ("Swift: Wrapper destroy\n")
     guard let wptr = wrapper else {
         return
     }
@@ -191,7 +242,7 @@ func godot_gdnative_init (options: UnsafePointer<godot_gdnative_init_options>)
 
     for i in 0..<Int(Godot.api.num_extensions) {
         if let slot = Godot.api.extensions.advanced(by: i).pointee {
-            print ("Extension value \(slot.pointee.type)")
+            //print ("Swift: Extension value \(slot.pointee.type)")
             switch slot.pointee.type {
             case GDNATIVE_EXT_NATIVESCRIPT.rawValue:
                 Godot.nativescript_api = UnsafePointer<godot_gdnative_ext_nativescript_api_struct> (OpaquePointer (slot)).pointee
@@ -202,7 +253,7 @@ func godot_gdnative_init (options: UnsafePointer<godot_gdnative_init_options>)
                 Godot.pluginscript_api = UnsafePointer<godot_gdnative_ext_pluginscript_api_struct> (OpaquePointer (slot)).pointee
                 break
             default:
-                print ("Skipping Extension value \(slot.pointee.type)")
+                print ("Swift: Skipping Extension value \(slot.pointee.type)")
             }
         }
     }
@@ -211,90 +262,6 @@ func godot_gdnative_init (options: UnsafePointer<godot_gdnative_init_options>)
     bf.alloc_instance_binding_data = wrapper_create
     bf.free_instance_binding_data = wrapper_destroy
     Godot.language_index  = Godot.nativescript_api.godot_nativescript_register_instance_binding_data_functions (bf)
-}
-
-class SimpleClass: Node {
-    public required init (nativeHandle: UnsafeRawPointer)
-    {
-        super.init(nativeHandle: nativeHandle)
-        print ("SimpleClass Ctor")
-    }
-}
-
-@_cdecl ("propertyGetData")
-func propertyGetData (instance: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?, userData: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer?
-{
-    print ("propertyGetData")
-    guard let wptr = instance else {
-        return nil
-    }
-    var w: Unmanaged<SimpleClass> = Unmanaged.fromOpaque(wptr)
-    let retained = w.takeRetainedValue()
-    let str = retained.name
-    let ret = GodotSwift.String (from: str)
-        
-    let addr = withUnsafePointer(to: &ret._godot_string) { $0 }
-    return UnsafeMutableRawPointer (OpaquePointer (addr))
-}
-
-func manualRegister () {
-    print ("** Manual Register")
-    // Registers the class
-    let cb = Godot.registerClass(SimpleClass.self)!
-    cb.registerProperty (name: "name", defaultValue: Variant (""), kind: .string, getFunc: { obj  in
-        print ("I am on the registered property!")
-        return Variant("SimpleName")
-    })
-//
-//    // Registers the property
-//    var attr = godot_nativescript_property_attributes ()
-//    attr.type = Int64 (Variant.Kind.string.rawValue)
-//    attr.hint = GODOT_PROPERTY_HINT_NONE
-//    attr.rset_type = GODOT_METHOD_RPC_MODE_DISABLED
-//    attr.default_value = Variant (String ("SimpleDefault"))._godot_variant
-//    attr.usage = GODOT_PROPERTY_USAGE_DEFAULT
-//
-//    func myGet (object: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?, userData: UnsafeMutableRawPointer?) -> godot_variant {
-//        var variant = Variant ("SimpleClass")
-//
-//        return variant._godot_variant
-//    }
-//    var getFunc = godot_nativescript_property_get_func ()
-//    getFunc.free_func = Godot.api.godot_free
-//    getFunc.get_func = myGet
-//    var setFunc = godot_nativescript_property_set_func ()
-//
-//    Godot.nativescript_api.godot_nativescript_register_property (Godot.nativeScriptHandle, "SimpleClass", "name", &attr, setFunc, getFunc)
-//
-    func myMethod (object: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?, userData: UnsafeMutableRawPointer?, argc: Int32, argv: UnsafeMutablePointer<UnsafeMutablePointer<godot_variant>?>?) -> godot_variant
-    {
-        if let args = argv {
-            if let t = args.pointee {
-                return t.pointee
-            }
-        }
-        return Variant ("Hello")._godot_variant
-    }
-    
-    var mattr = godot_nativescript_method_attributes ()
-    mattr.rpc_type = GODOT_METHOD_RPC_MODE_DISABLED
-    var method = godot_nativescript_instance_method ()
-    method.method = myMethod
-    Godot.nativescript_api.godot_nativescript_register_method (Godot.nativeScriptHandle, "SimpleClass", "method", mattr, method)
-    
-    func myUpdate (object: UnsafeMutableRawPointer?, methodData: UnsafeMutableRawPointer?, userData: UnsafeMutableRawPointer?, argc: Int32, argv: UnsafeMutablePointer<UnsafeMutablePointer<godot_variant>?>?) -> godot_variant
-    {
-        print ("Update called")
-        if let args = argv {
-            if let t = args.pointee {
-                return t.pointee
-            }
-        }
-        return Variant ("Hello")._godot_variant
-    }
-    method.method = myUpdate
-    Godot.nativescript_api.godot_nativescript_register_method (Godot.nativeScriptHandle, "SimpleClass", "_process", mattr, method)
-    
 }
 
 @_cdecl("godot_nativescript_init")
@@ -309,3 +276,4 @@ func godot_nativescript_init (handle: UnsafeMutableRawPointer?) {
 func godot_gdnative_terminate (options: godot_gdnative_terminate_options) {
     print ("terminate")
 }
+
