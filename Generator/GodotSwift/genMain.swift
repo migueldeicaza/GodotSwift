@@ -15,10 +15,6 @@ var referenceTypes: [String:Bool] = [:]
 // Maps a typename to its toplevel Json element
 var tree: [String:WelcomeElement] = [:]
 
-// Flags types that should be "open", because they contain
-// a virtual method that the user can override
-var openType: [String: Bool] = [:]
-
 // The list of enum values that have been seen, so that
 // constants can be introduced for any missing values
 var seenEnumKeys = Set<String>()
@@ -54,7 +50,7 @@ func genBind (start: GodotApi)
     // And track which types must be opened up
     for x in start {
         tree [x.name] = x
-        openType [x.name] = x.methods.contains { x in x.isVirtual }
+        
         var base = x.baseClass
         if base != "" {
             if var v = typeToChildren [x.name] {
@@ -62,19 +58,6 @@ func genBind (start: GodotApi)
             } else {
                 typeToChildren [x.name] = [x.baseClass]
             }
-        }
-    }
-    // Now patch all the way to the top, so we can annotate all the open types in the hierarchy
-    for (typeName,isOpen) in openType {
-        if !isOpen { continue }
-        
-        var start = typeName
-        while start != "" {
-            guard let base = tree [start]?.baseClass else {
-                continue
-            }
-            openType [base] = true
-            start = base
         }
     }
     
@@ -90,7 +73,7 @@ func genBind (start: GodotApi)
 //            continue
 //        }
         let baseClass = x.baseClass == "" ? "Wrapped" : stripName(x.baseClass)
-        let classModifier = openType [x.name] ?? false ? "open" : "public"
+        let classModifier = "open" // Turns out Object has vritual methods, so everything needs to be open
         res += "\(classModifier) class \(typeName):  \(baseClass) {\n"
         let gdname = builtinTypeToGdName (typeName)
         let typeEnum = builtinTypeToGdNativeEnum (typeName)
@@ -273,7 +256,9 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
     for m in methods {
         var mr: String
         var returnType = m.returnType
-        
+        if m.isVirtual {
+            print ("\(typeName) \(m.name) Method is virtual ")
+        }
         let ret = getGodotType(returnType)
 
         // This is referenced, but does not exist?
@@ -329,7 +314,7 @@ func generateMainMethods (_ methods: [Method], _ gdname: String, _ typeName: Str
             visibility = "private"
             eliminate = "_ "
         } else {
-            visibility = "public"
+            visibility = m.isVirtual ? "open" : "public"
             eliminate = ""
         }
         for arg in arguments {

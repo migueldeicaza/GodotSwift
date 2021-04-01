@@ -11,6 +11,10 @@ let package = Package(
             name: "GodotSwift",
             type: .dynamic,
             targets: ["GodotSwift"]),
+        .library(
+            name: "Script",
+            type: .dynamic,
+            targets: ["Script"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -26,6 +30,11 @@ let package = Package(
             name: "GodotSwift",
             dependencies: ["Godot"],
 	        swiftSettings: [.unsafeFlags (["-suppress-warnings"])],
+            linkerSettings: [.unsafeFlags (["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])]
+        ),
+        .target(
+            name: "Script",
+            dependencies: ["GodotSwift"],
             linkerSettings: [.unsafeFlags (["-Xlinker", "-undefined", "-Xlinker", "dynamic_lookup"])]
         ),
         .testTarget(
