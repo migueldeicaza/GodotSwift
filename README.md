@@ -1,4 +1,12 @@
 
+# NOTICE
+
+This was a binding for the old extension system in Godot which is
+already deprecated.   I am working on a new version that works with
+the Godot 4.0 engine
+
+# OLD STUFF
+
 Swift bindings for the [Godot Game Engine](https://godotengine.org)
 
 This is currently a work in progress, and is aimed at the Godot 4.0
