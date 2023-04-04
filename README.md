@@ -2,8 +2,8 @@
 # NOTICE
 
 This was a binding for the old extension system in Godot which is
-already deprecated.   I am working on a new version that works with
-the Godot 4.0 engine
+already deprecated.   Please visit the new version for Godot 4.0
+in [SwiftGodot](https://github.com/migueldeicaza/SwiftGodot)
 
 # OLD STUFF
 
